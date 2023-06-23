@@ -15,18 +15,29 @@ app.use(express.static("public"));
 
 mongoose.connect(process.env.MONGO_URI);
 
+// Schemas
 const itemsSchema = {
   name: String,
 };
+
+const listSchema = {
+  name: String,
+  items: [itemsSchema],
+}
+
+// Models
 const Item = mongoose.model("Item", itemsSchema);
+const List = mongoose.model("List", listSchema);
+
+
 const item1 = new Item({
-  name: "Web Development"
+  name: "DefaultItem1"
 });
 const item2 = new Item({
-  name: "Programming"
+  name: "DefaultItem2"
 });
 const item3 = new Item({
-  name: "Sport"
+  name: "DefaultItem3"
 });
 
 const defaultItems = [item1, item2, item3];
@@ -68,18 +79,36 @@ app.get("/", function(req, res) {
 
 app.post("/", function(req, res){
 
-  const item = req.body.newItem;
+  const itemName = req.body.newItem;
+  // console.log(itemName);
+  const listName = req.body.list;
 
-  Item.insertMany([{ name: item }])
-    .then(() => {
-      console.log(`Successfully inserted ${item} into items`);
-    })
-    .catch((err) => {
-      console.log(err);
-    })
-    .finally(() => {
-      res.redirect("/");
-    });
+  const item = new Item({
+    name: itemName,
+  })
+
+  if (listName === "Today") {
+    item.save()
+      .then(() => {
+        if (res.headersSent !== true) {
+          res.redirect("/");
+        } 
+      });
+  } else {
+    List.findOne({ name: listName })
+      .then(foundList => {
+        foundList.items.push(item);
+        foundList.save()
+          .then(() => {
+            if (res.headersSent !== true) {
+              res.redirect(`/${listName}`);
+            }
+          })
+      })
+      .catch(err => {
+        console.log(err);
+      })
+  }
 });
 
 
@@ -99,9 +128,35 @@ app.post("/delete", function(req, res){
 
 });
 
-app.get("/category/:name", function(req, res){
-  const categoryName = req.params.name;
-  res.render("list", {listTitle: categoryName, newListItems: []});
+app.get("/:customListName", function(req, res){
+  const requestName = req.params.customListName
+  const customListName = requestName.charAt(0).toUpperCase() + requestName.slice(1);
+
+  List.findOne({ name: customListName })
+    .then((listEntry) => {
+      if (!listEntry) {
+        const list = new List({
+          name: customListName,
+          items: defaultItems
+        });
+      
+        list.save();
+        res.redirect(`/${customListName}`);
+          // .then(() => {
+          //   res.redirect(`/${customListName}`);
+          // })
+          // .catch(err => {
+          //   console.log(err);
+          // })
+      }
+      if (res.headersSent !== true) {
+        res.render("list", {listTitle: listEntry.name, newListItems: listEntry.items});
+      }
+    })
+    .catch(err => {
+      console.log(err);
+    })
+
 });
 
 app.get("/about", function(req, res){
