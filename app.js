@@ -4,6 +4,7 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const _ = require("lodash");
 
 const app = express();
 
@@ -115,22 +116,29 @@ app.post("/", function(req, res){
 app.post("/delete", function(req, res){
   const checkboxValues = JSON.parse(req.body.checkbox);
   // console.log(checkboxValues);
-  Item.deleteOne({ _id: checkboxValues.id })
-    .then(() => {
-      console.log(`Successfully deleted ${checkboxValues.name} from the items collections.`);
-    })
-    .catch(err => {
-      console.log(err);
-    })
-    .finally(() => {
-      res.redirect("/");
-    });
+  if (checkboxValues.listName == "Today") {
+    Item.deleteOne({ _id: checkboxValues.id })
+      .then(() => {
+        console.log(`Successfully deleted ${checkboxValues.name} from the items collections.`);
+      })
+      .catch(err => {
+        console.log(err);
+      })
+      .finally(() => {
+        res.redirect("/");
+      });
+  } else {
+    List.updateOne({ name: checkboxValues.listName }, { $pull: { items: { _id: checkboxValues.id } } })
+      .then(() => {
+        res.redirect(`/${checkboxValues.listName}`);
+      })
+  }
 
 });
 
 app.get("/:customListName", function(req, res){
   const requestName = req.params.customListName
-  const customListName = requestName.charAt(0).toUpperCase() + requestName.slice(1);
+  const customListName = _.capitalize(requestName);
 
   List.findOne({ name: customListName })
     .then((listEntry) => {
