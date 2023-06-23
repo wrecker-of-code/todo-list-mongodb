@@ -5,12 +5,15 @@
   </div>
 
   <div class="box">
-    <% for (let i=0; i<newListItems.length; i++) { %>
-      <div class="item">
-        <input type="checkbox">
-        <p><%=  newListItems[i].name  %></p>
-      </div>
-      <% } %>
+    <% newListItems.forEach(item => { %>
+      <form action="/delete" method="post">
+        <div class="item">
+          <input type="checkbox" name="checkbox" value="<%= JSON.stringify({id: item._id, name: item.name}) %>" onChange="this.form.submit()">
+          <p><%=  item.name  %></p>
+        </div>
+
+      </form>
+    <% }) %>
 
       <form class="item" action="/" method="post">
         <input type="text" name="newItem" placeholder="New Item" autocomplete="off">

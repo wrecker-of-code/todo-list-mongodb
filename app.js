@@ -31,18 +31,38 @@ const item3 = new Item({
 
 const defaultItems = [item1, item2, item3];
 
-Item.insertMany(defaultItems)
+function insertDefaultItems() {
+  Item.insertMany(defaultItems)
   .then(function() {
     console.log("Successfully inserted the default items into the data collection.");
   })
   .catch(function(err) {
     console.log(err);
   });
+}
 
 
 app.get("/", function(req, res) {
+  let items = [];
+  Item.find({})
+    .then((itemList) => {
+      if (!itemList || itemList.length === 0) {
+        insertDefaultItems();
+        res.redirect("/");
+      }
+      // console.log(itemList);
+      items = itemList;
+    })
+    .catch((err) => {
+      console.log(err);
+      items = [];
+    })
+    .finally(() => {
+      if (res.headersSent !== true) {
+        res.render("list", {listTitle: "Today", newListItems: items});
+      }
+    });
 
-  res.render("list", {listTitle: "Today", newListItems: items});
 
 });
 
@@ -50,17 +70,38 @@ app.post("/", function(req, res){
 
   const item = req.body.newItem;
 
-  if (req.body.list === "Work") {
-    workItems.push(item);
-    res.redirect("/work");
-  } else {
-    items.push(item);
-    res.redirect("/");
-  }
+  Item.insertMany([{ name: item }])
+    .then(() => {
+      console.log(`Successfully inserted ${item} into items`);
+    })
+    .catch((err) => {
+      console.log(err);
+    })
+    .finally(() => {
+      res.redirect("/");
+    });
 });
 
-app.get("/work", function(req,res){
-  res.render("list", {listTitle: "Work List", newListItems: workItems});
+
+app.post("/delete", function(req, res){
+  const checkboxValues = JSON.parse(req.body.checkbox);
+  // console.log(checkboxValues);
+  Item.deleteOne({ _id: checkboxValues.id })
+    .then(() => {
+      console.log(`Successfully deleted ${checkboxValues.name} from the items collections.`);
+    })
+    .catch(err => {
+      console.log(err);
+    })
+    .finally(() => {
+      res.redirect("/");
+    });
+
+});
+
+app.get("/category/:name", function(req, res){
+  const categoryName = req.params.name;
+  res.render("list", {listTitle: categoryName, newListItems: []});
 });
 
 app.get("/about", function(req, res){
